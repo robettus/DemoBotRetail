@@ -204,7 +204,11 @@ class Greeting extends ComponentDialog {
     async greetUser(step) {
         const userProfile = await this.userProfileAccessor.get(step.context);
         //INGRESA DATOS A BD
-        conn.query('INSERT INTO Persona (nombre, ciudad) VALUES (${ userProfile.name }, ${ userProfile.city });', 
+        //var sql = "INSERT INTO Persona (nombre, ciudad) VALUES ?";
+       // var values = [
+       //     ['John', 'Highway 71'],
+       // };
+        conn.query('INSERT INTO Persona (nombre, ciudad) VALUES (?, ?);', [ userProfile.name ,  userProfile.city ],
             function (err, results, fields) {
                 if (err) throw err;
             else console.log('Inserted ' + results.affectedRows + ' row(s).');

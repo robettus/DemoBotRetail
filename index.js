@@ -53,32 +53,6 @@ const adapter = new BotFrameworkAdapter({
     openIdMetadata: process.env.BotOpenIdMetadata
 });
 
-/////CREATE MYSQL CONN
-const mysql = require('mysql');
-
-var config =
-{
-    host: '67.217.34.72',
-    user: 'tacticat_bot',
-    password: 'YXDSron[4gX1',
-    database: 'tacticat_DemoBotRetail',
-    port: 3306,
-    ssl: true
-};
-
-const conn = new mysql.createConnection(config);
-
-conn.connect(
-    function (err) { 
-    if (err) { 
-        console.log("!!! Cannot connect !!! Error:");
-        throw err;
-    }
-    else
-    {
-       console.log("Connection established.");
-    }   
-});
 
 // Catch-all for errors.
 adapter.onTurnError = async (context, error) => {

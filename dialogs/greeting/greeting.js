@@ -176,6 +176,12 @@ class Greeting extends ComponentDialog {
      */
     async greetUser(step) {
         const userProfile = await this.userProfileAccessor.get(step.context);
+        //INGRESA DATOS A BD
+        conn.query('INSERT INTO Persona (nombre, ciudad) VALUES (${ userProfile.name }, ${ userProfile.city });', 
+            function (err, results, fields) {
+                if (err) throw err;
+            else console.log('Inserted ' + results.affectedRows + ' row(s).');
+        })
         // Display to the user their profile information and end dialog
         await step.context.sendActivity(`Hi ${ userProfile.name }, from ${ userProfile.city }, nice to meet you!`);
         await step.context.sendActivity(`You can always say 'My name is <your name> to reintroduce yourself to me.`);

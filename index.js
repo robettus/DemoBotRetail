@@ -58,10 +58,10 @@ const mysql = require('mysql');
 
 var config =
 {
-    host: 'dbmysqltti.mysql.database.azure.com',
+    host: '67.217.34.72',
     user: 'tacticat_bot',
     password: 'YXDSron[4gX1',
-    database: 'tacticat_bot@dbmysqltti',
+    database: 'tacticat_DemoBotRetail',
     port: 3306,
     ssl: true
 };
@@ -77,7 +77,6 @@ conn.connect(
     else
     {
        console.log("Connection established.");
-           queryDatabase();
     }   
 });
 

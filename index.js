@@ -58,10 +58,10 @@ const mysql = require('mysql');
 
 var config =
 {
-    host: '67.217.34.72',
-    user: 'tacticat_chatbot',
-    password: 'tacti#062017',
-    database: 'tacticat_CHATBOT',
+    host: 'dbmysqltti.mysql.database.azure.com',
+    user: 'tacticat_bot',
+    password: 'YXDSron[4gX1',
+    database: 'tacticat_bot@dbmysqltti',
     port: 3306,
     ssl: true
 };

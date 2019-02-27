@@ -1,6 +1,33 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+/////CREATE MYSQL CONN
+const mysql = require('mysql');
+
+var config =
+{
+    host: '67.217.34.72',
+    user: 'tacticat_bot',
+    password: 'YXDSron[4gX1',
+    database: 'tacticat_DemoBotRetail',
+    port: 3306,
+    ssl: true
+};
+
+const conn = new mysql.createConnection(config);
+
+conn.connect(
+    function (err) { 
+    if (err) { 
+        console.log("!!! Cannot connect !!! Error:");
+        throw err;
+    }
+    else
+    {
+       console.log("Connection established.");
+    }   
+});
+
 // greeting.js defines the greeting dialog
 
 // Import required Bot Builder

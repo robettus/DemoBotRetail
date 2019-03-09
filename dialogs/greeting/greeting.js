@@ -3,6 +3,9 @@
 
 /////CREATE MYSQL CONN
 const mysql = require('mysql');
+const express = require('express');
+const bodyParser = require('body-parser');
+const request = require('request');
 
 var config =
 {

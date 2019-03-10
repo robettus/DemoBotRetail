@@ -76,6 +76,7 @@ class Greeting extends ComponentDialog {
         // as a water fall dialog executes steps registered in order
         this.addDialog(new WaterfallDialog(PROFILE_DIALOG, [
             this.initializeStateStep.bind(this),
+            this.askTemplate(),
             this.promptForNameStep.bind(this),
             this.promptForCityStep.bind(this),
             this.displayGreetingStep.bind(this)
@@ -222,5 +223,30 @@ class Greeting extends ComponentDialog {
         return await step.endDialog();
     }
 }
+
+function askTemplate(text){
+    return {
+        "attachment":{
+            "type":"template",
+            "payload":{
+                "template_type":"button",
+                "text": text,
+                "buttons":[
+                    {
+                        "type":"postback",
+                        "title":"Cats",
+                        "payload":"CAT_PICS"
+                    },
+                    {
+                        "type":"postback",
+                        "title":"Dogs",
+                        "payload":"DOG_PICS"
+                    }
+                ]
+            }
+        }
+    }
+}
+
 
 exports.GreetingDialog = Greeting;

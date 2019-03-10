@@ -1,124 +1,214 @@
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License.
+'use strict';
+let express = require('express'),
+    bodyParser = require('body-parser'),
+    app = express(),
+    request = require('request'),
+    //config = require('config'),
+    images = require('./pics');
 
-// index.js is used to setup and configure your bot
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
-// Import required pckages
-const path = require('path');
-const restify = require('restify');
+let users = {};
+
+app.listen(8989, () => console.log('Example app listening on port 8989!'));
+
+app.get('/', (req, res) => res.send('Hello World!'));
 
 
+// Creates the endpoint for our webhook
+app.post('/webhook', (req, res) => {
 
-    // Import required bot services. See https://aka.ms/bot-services to learn more about the different parts of a bot.
-const { BotFrameworkAdapter, MemoryStorage, ConversationState, UserState } = require('botbuilder');
-// Import required bot configuration.
-const { BotConfiguration } = require('botframework-config');
+    let body = req.body;
 
-// This bot's main dialog.
-const { BasicBot } = require('./bot');
+    // Checks this is an event from a page subscription
+    if (body.object === 'page') {
 
-// Read botFilePath and botFileSecret from .env file
-// Note: Ensure you have a .env file and include botFilePath and botFileSecret.
-const ENV_FILE = path.join(__dirname, '.env');
-const env = require('dotenv').config({ path: ENV_FILE });
+        // Iterates over each entry - there may be multiple if batched
+        body.entry.forEach(function(entry) {
 
-// Get the .bot file path
-// See https://aka.ms/about-bot-file to learn more about .bot file its use and bot configuration.
-const BOT_FILE = path.join(__dirname, (process.env.botFilePath || ''));
-let botConfig;
-try {
-    // Read bot configuration from .bot file.
-    botConfig = BotConfiguration.loadSync(BOT_FILE, process.env.botFileSecret);
-} catch (err) {
-    console.error(`\nError reading bot file. Please ensure you have valid botFilePath and botFileSecret set for your environment.`);
-    console.error(`\n - You can find the botFilePath and botFileSecret in the Azure App Service application settings.`);
-    console.error(`\n - If you are running this bot locally, consider adding a .env file with botFilePath and botFileSecret.`);
-    console.error(`\n - See https://aka.ms/about-bot-file to learn more about .bot file its use and bot configuration.\n\n`);
-    process.exit();
-}
+            // Gets the message. entry.messaging is an array, but
+            // will only ever contain one message, so we get index 0
+            let webhook_event = entry.messaging[0];
+            console.log(webhook_event);
 
-// For local development configuration as defined in .bot file
-const DEV_ENVIRONMENT = 'development';
+            // Get the sender PSID
+            let sender_psid = webhook_event.sender.id;
+            console.log('Sender PSID: ' + sender_psid);
 
-// bot name as defined in .bot file or from runtime
-const BOT_CONFIGURATION = (process.env.NODE_ENV || DEV_ENVIRONMENT);
+            // Check if the event is a message or postback and
+            // pass the event to the appropriate handler function
+            if (webhook_event.message) {
+                handleMessage(sender_psid, webhook_event.message);
+            } else if (webhook_event.postback) {
+                handlePostback(sender_psid, webhook_event.postback);
+            }
+        });
 
-// Get bot endpoint configuration by service name
-const endpointConfig = botConfig.findServiceByNameOrId(BOT_CONFIGURATION);
+        // Returns a '200 OK' response to all requests
+        res.status(200).send('EVENT_RECEIVED');
+    } else {
+        // Returns a '404 Not Found' if event is not from a page subscription
+        res.sendStatus(404);
+    }
 
-// Create adapter. 
-// See https://aka.ms/about-bot-adapter to learn more about .bot file its use and bot configuration .
-const adapter = new BotFrameworkAdapter({
-    appId: endpointConfig.appId || process.env.microsoftAppID,
-    appPassword: endpointConfig.appPassword || process.env.microsoftAppPassword,
-    channelService: process.env.ChannelService,
-    openIdMetadata: process.env.BotOpenIdMetadata
 });
 
+// Adds support for GET requests to our webhook
+app.get('/webhook', (req, res) => {
 
-// Catch-all for errors.
-adapter.onTurnError = async (context, error) => {
-    // This check writes out errors to console log
-    // NOTE: In production environment, you should consider logging this to Azure
-    //       application insights.
-    console.error(`\n [onTurnError]: ${ error }`);
-    // Send a message to the user
-    await context.sendActivity(`Oops. Something went wrong!`);
-    // Clear out state
-    await conversationState.clear(context);
-    // Save state changes.
-    await conversationState.saveChanges(context);
-};
+    // Your verify token. Should be a random string.
+    let VERIFY_TOKEN = "1476955067";
 
-// Define a state store for your bot. See https://aka.ms/about-bot-state to learn more about using MemoryStorage.
-// A bot requires a state store to persist the dialog and user state between messages.
-let conversationState, userState;
+    // Parse the query params
+    let mode = req.query['hub.mode'];
+    let token = req.query['hub.verify_token'];
+    let challenge = req.query['hub.challenge'];
 
-// For local development, in-memory storage is used.
-// CAUTION: The Memory Storage used here is for local bot debugging only. When the bot
-// is restarted, anything stored in memory will be gone.
-const memoryStorage = new MemoryStorage();
-conversationState = new ConversationState(memoryStorage);
-userState = new UserState(memoryStorage);
+    // Checks if a token and mode is in the query string of the request
+    if (mode && token) {
 
-// CAUTION: You must ensure your product environment has the NODE_ENV set
-//          to use the Azure Blob storage or Azure Cosmos DB providers.
+        // Checks the mode and token sent is correct
+        if (mode === 'subscribe' && token === VERIFY_TOKEN) {
 
-// Add botbuilder-azure when using any Azure services. 
-// const { BlobStorage } = require('botbuilder-azure');
-// // Get service configuration
-// const blobStorageConfig = botConfig.findServiceByNameOrId(STORAGE_CONFIGURATION_ID);
-// const blobStorage = new BlobStorage({
-//     containerName: (blobStorageConfig.container || DEFAULT_BOT_CONTAINER),
-//     storageAccountOrConnectionString: blobStorageConfig.connectionString,
-// });
-// conversationState = new ConversationState(blobStorage);
-// userState = new UserState(blobStorage);
+            // Responds with the challenge token from the request
+            console.log('WEBHOOK_VERIFIED');
+            res.status(200).send(challenge);
 
-// Create the main dialog.
-let bot;
-try {
-    bot = new BasicBot(conversationState, userState, botConfig);
-} catch (err) {
-    console.error(`[botInitializationError]: ${ err }`);
-    process.exit();
-}
-
-// Create HTTP server
-let server = restify.createServer();
-server.listen(process.env.port || process.env.PORT || 3978, function() {
-    console.log(`\n${ server.name } listening to ${ server.url }`);
-    console.log(`\nGet Bot Framework Emulator: https://aka.ms/botframework-emulator`);
-    console.log(`\nTo talk to your bot, open basic-bot.bot file in the Emulator`);
+        } else {
+            // Responds with '403 Forbidden' if verify tokens do not match
+            res.sendStatus(403);
+        }
+    }
 });
 
-// Listen for incoming activities and route them to your bot main dialog.
-server.post('/api/messages', (req, res) => {
-    // Route received a request to adapter for processing
-    adapter.processActivity(req, res, async (turnContext) => {
-        // route to bot activity handler.
-        await bot.onTurn(turnContext);
+function getImage(type, sender_id){
+    // create user if doesn't exist
+    if(users[sender_id] === undefined){
+        users = Object.assign({
+            [sender_id] : {
+                'cats_count' : 0,
+                'dogs_count' : 0
+            }
+        }, users);
+    }
+
+    let count = images[type].length, // total available images by type
+        user = users[sender_id], // // user requesting image
+        user_type_count = user[type+'_count'];
+
+
+    // update user before returning image
+    let updated_user = {
+        [sender_id] : Object.assign(user, {
+            [type+'_count'] : count === user_type_count + 1 ? 0 : user_type_count + 1
+        })
+    };
+    // update users
+    users = Object.assign(users, updated_user);
+
+    console.log(users);
+    return images[type][user_type_count];
+}
+
+function askTemplate(text){
+    return {
+        "attachment":{
+            "type":"template",
+            "payload":{
+                "template_type":"button",
+                "text": text,
+                "buttons":[
+                    {
+                        "type":"postback",
+                        "title":"Cats",
+                        "payload":"CAT_PICS"
+                    },
+                    {
+                        "type":"postback",
+                        "title":"Dogs",
+                        "payload":"DOG_PICS"
+                    }
+                ]
+            }
+        }
+    }
+}
+
+function imageTemplate(type, sender_id){
+    return {
+        "attachment":{
+            "type":"image",
+            "payload":{
+                "url": getImage(type, sender_id),
+                "is_reusable":true
+            }
+        }
+    }
+}
+
+// Handles messages events
+function handleMessage(sender_psid, received_message) {
+    let response;
+
+    // Check if the message contains text
+    if (received_message.text) {
+
+        // Create the payload for a basic text message
+        response = askTemplate();
+    }
+
+    // Sends the response message
+    callSendAPI(sender_psid, response);
+}
+
+function handlePostback(sender_psid, received_postback) {
+    let response;
+
+    // Get the payload for the postback
+    let payload = received_postback.payload;
+
+    // Set the response based on the postback payload
+    if (payload === 'CAT_PICS') {
+        response = imageTemplate('cats', sender_psid);
+        callSendAPI(sender_psid, response, function(){
+            callSendAPI(sender_psid, askTemplate('Show me more'));
+        });
+    } else if (payload === 'DOG_PICS') {
+        response = imageTemplate('dogs', sender_psid);
+        callSendAPI(sender_psid, response, function(){
+            callSendAPI(sender_psid, askTemplate('Show me more'));
+        });
+    } else if(payload === 'GET_STARTED'){
+        response = askTemplate('Are you a Cat or Dog Person?');
+        callSendAPI(sender_psid, response);
+    }
+    // Send the message to acknowledge the postback
+}
+
+// Sends response messages via the Send API
+function callSendAPI(sender_psid, response, cb = null) {
+    // Construct the message body
+    let request_body = {
+        "recipient": {
+            "id": sender_psid
+        },
+        "message": response
+    };
+
+    // Send the HTTP request to the Messenger Platform
+    request({
+        "uri": "https://graph.facebook.com/v2.6/me/messages",
+        "qs": { "access_token": "EAAm1dcp9SekBABtAg00WHuxx6vKZCieWBkUM9SkGqDyEx29kBWctaZA7ZBDfO2GERsGWru13AcgnmoEq34oDQsh7mNIy25zEAMnJ0ZAXPQVefm3GYRuCvvtgU8hjf8FrKsXEZAUueITrwPnTUfQjuz1GugWZBQPMg1SLdiZCEFIHwZDZD" },
+        "method": "POST",
+        "json": request_body
+    }, (err, res, body) => {
+        if (!err) {
+            if(cb){
+                cb();
+            }
+        } else {
+            console.error("Unable to send message:" + err);
+        }
     });
-});
-
-
+}

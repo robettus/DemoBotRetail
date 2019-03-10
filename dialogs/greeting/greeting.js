@@ -76,7 +76,6 @@ class Greeting extends ComponentDialog {
         // as a water fall dialog executes steps registered in order
         this.addDialog(new WaterfallDialog(PROFILE_DIALOG, [
             this.initializeStateStep.bind(this),
-            this.askTemplate(),
             this.promptForNameStep.bind(this),
             this.promptForCityStep.bind(this),
             this.displayGreetingStep.bind(this)
@@ -99,6 +98,7 @@ class Greeting extends ComponentDialog {
      */
     async initializeStateStep(step) {
         let userProfile = await this.userProfileAccessor.get(step.context);
+        await this.handleMessage();
         if (userProfile === undefined) {
             if (step.options && step.options.userProfile) {
                 await this.userProfileAccessor.set(step.context, step.options.userProfile);
@@ -222,31 +222,74 @@ class Greeting extends ComponentDialog {
         await step.context.sendActivity(`You can always say 'My name is <your name> to reintroduce yourself to me.`);
         return await step.endDialog();
     }
-}
-
-function askTemplate(text){
-    return {
-        "attachment":{
-            "type":"template",
-            "payload":{
-                "template_type":"button",
-                "text": text,
-                "buttons":[
-                    {
-                        "type":"postback",
-                        "title":"Cats",
-                        "payload":"CAT_PICS"
-                    },
-                    {
-                        "type":"postback",
-                        "title":"Dogs",
-                        "payload":"DOG_PICS"
-                    }
-                ]
+    
+    async askTemplate(text){
+        return {
+            "attachment":{
+                "type":"template",
+                "payload":{
+                    "template_type":"button",
+                    "text": text,
+                    "buttons":[
+                        {
+                            "type":"postback",
+                            "title":"Cats",
+                            "payload":"CAT_PICS"
+                        },
+                        {
+                            "type":"postback",
+                            "title":"Dogs",
+                            "payload":"DOG_PICS"
+                        }
+                    ]
+                }
             }
         }
     }
+
+        // Sends response messages via the Send API
+    async callSendAPI(sender_psid, response, cb = null) {
+        // Construct the message body
+        let request_body = {
+            "recipient": {
+                "id": sender_psid
+            },
+            "message": response
+        };
+
+        // Send the HTTP request to the Messenger Platform
+        request({
+            "uri": "https://graph.facebook.com/v2.6/me/messages",
+            "qs": { "access_token": config.get('facebook.page.access_token') },
+            "method": "POST",
+            "json": request_body
+        }, (err, res, body) => {
+            if (!err) {
+                if(cb){
+                    cb();
+                }
+            } else {
+                console.error("Unable to send message:" + err);
+            }
+        });
+    }
+
+    // Handles messages events
+    async handleMessage(sender_psid, received_message) {
+        let response;
+
+        // Check if the message contains text
+        if (received_message.text) {
+
+            // Create the payload for a basic text message
+            response = askTemplate();
+        }
+
+        // Sends the response message
+        callSendAPI(sender_psid, response);
+    }
 }
+
 
 
 exports.GreetingDialog = Greeting;
